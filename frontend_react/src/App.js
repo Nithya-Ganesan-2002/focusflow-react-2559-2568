@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
+import TimerDisplay from "./components/TimerDisplay";
+import SessionControls from "./components/SessionControls";
+import ThemeToggle from "./components/ThemeToggle";
+import HistoryPanel from "./components/HistoryPanel";
 
-// Accent, primary, and secondary color palette
+// Accent, primary, and secondary colors
 const ACCENT = "#ff7043";
 const PRIMARY = "#1976d2";
 const SECONDARY = "#ffffff";
 
-// Initial default Pomodoro config (in minutes)
+// Default Pomodoro config (in minutes)
 const DEFAULTS = {
   work: 25,
   shortBreak: 5,
@@ -21,7 +25,6 @@ const LOCALSTORAGE_CONFIG = "focusflow-pomodoro-config";
 const BEEP_SRC =
   "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YYQAAABnZmZmZmZmZmZmZkAAAGZmZmZmZmZmZmZmQAAAGZmZmZmZmZmZmZmQAAAGZmZmZmZmZmZmZmQAAAGZmZmZmZmZmZmZmQAAAGZmZmZmZmZmZmZmQAAAGZmZmZmZmYA";
 
-// Pomodoro states
 const MODE_WORK = "Work";
 const MODE_SHORT = "Short Break";
 const MODE_LONG = "Long Break";
@@ -31,7 +34,7 @@ function App() {
   // Theme management
   const [theme, setTheme] = useState("light");
 
-  // Configurable times, loaded from localStorage if present
+  // Pomodoro configuration
   const [config, setConfig] = useState(() =>
     JSON.parse(localStorage.getItem(LOCALSTORAGE_CONFIG)) || DEFAULTS
   );
@@ -49,7 +52,6 @@ function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
-  // Audio ref for notification
   const audioRef = useRef(null);
 
   // Theme effect
@@ -72,7 +74,7 @@ function App() {
     return () => clearInterval(interval);
   }, [isRunning]);
 
-  // Timer transition + logging
+  // Timer completion logic
   useEffect(() => {
     if (timeLeft >= 0) return;
     audioRef.current && audioRef.current.play();
@@ -90,22 +92,18 @@ function App() {
       setMode(MODE_WORK);
       setTimeLeft(config.work * 60);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeLeft]);
+    // eslint-disable-next-line
+  }, [timeLeft]); 
 
   // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  };
+  const toggleTheme = () => setTheme((prev) => (prev === "light" ? "dark" : "light"));
 
   // PUBLIC_INTERFACE
-  const handleStart = () => {
-    setIsRunning(true);
-  };
+  const handleStart = () => setIsRunning(true);
+
   // PUBLIC_INTERFACE
-  const handlePause = () => {
-    setIsRunning(false);
-  };
+  const handlePause = () => setIsRunning(false);
+
   // PUBLIC_INTERFACE
   const handleReset = () => {
     setIsRunning(false);
@@ -115,14 +113,14 @@ function App() {
   };
 
   // PUBLIC_INTERFACE
-  function handleConfigChange(e) {
+  const handleConfigChange = (e) => {
     const { name, value } = e.target;
     let v = Number(value);
     if (isNaN(v) || v < 1 || v > 120) return;
     setConfig((prev) => ({ ...prev, [name]: v }));
-  }
+  };
 
-  // When config changes and mode matches, update the timer default time
+  // Update timer if config changes and not running
   useEffect(() => {
     if (!isRunning) {
       if (mode === MODE_WORK) setTimeLeft(config.work * 60);
@@ -161,7 +159,7 @@ function App() {
   }
 
   // PUBLIC_INTERFACE
-  function handleSkip() {
+  const handleSkip = () => {
     setIsRunning(false);
     audioRef.current && audioRef.current.play();
     if (mode === MODE_WORK) {
@@ -178,28 +176,24 @@ function App() {
       setMode(MODE_WORK);
       setTimeLeft(config.work * 60);
     }
-  }
+  };
 
   // PUBLIC_INTERFACE
-  function openSettings() {
+  const openSettings = () => {
     setShowSettings(true);
     setIsRunning(false);
-  }
+  };
   // PUBLIC_INTERFACE
-  function closeSettings() {
-    setShowSettings(false);
-  }
+  const closeSettings = () => setShowSettings(false);
   // PUBLIC_INTERFACE
-  function openHistory() {
+  const openHistory = () => {
     setShowHistory(true);
     setIsRunning(false);
-  }
+  };
   // PUBLIC_INTERFACE
-  function closeHistory() {
-    setShowHistory(false);
-  }
+  const closeHistory = () => setShowHistory(false);
 
-  // Quick stats for completed pomodoros
+  // Stats for today
   const pomodorosToday = history.filter((h) => {
     const d = new Date(h.timestamp);
     const now = new Date();
@@ -215,15 +209,8 @@ function App() {
   return (
     <div className="App" style={{ minHeight: "100vh" }}>
       <header className="App-header" style={{ background: "var(--bg-secondary)" }}>
-        {/* Theme Toggle */}
-        <button
-          className="theme-toggle"
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
-          style={{ border: "none" }}
-        >
-          {theme === "light" ? "🌙 Dark" : "☀️ Light"}
-        </button>
+        {/* Theme Toggle Button */}
+        <ThemeToggle theme={theme} onToggle={toggleTheme} />
         <h1
           style={{
             margin: 0,
@@ -246,7 +233,7 @@ function App() {
         >
           Pomodoro Timer
         </p>
-        {/* Stats quick view */}
+        {/* Stats quick view button */}
         <button
           style={{
             background: PRIMARY,
@@ -263,14 +250,20 @@ function App() {
           onClick={openHistory}
         >
           📈 History&nbsp;
-          <span style={{ background: ACCENT, color: "#fff", borderRadius: "6px", padding: "2px 8px", marginLeft: "3px", fontWeight: 700 }}>
+          <span style={{
+            background: ACCENT,
+            color: "#fff",
+            borderRadius: "6px",
+            padding: "2px 8px",
+            marginLeft: "3px",
+            fontWeight: 700
+          }}>
             {pomodorosToday}
           </span>
           &nbsp;Today
         </button>
       </header>
 
-      {/* Timer Centerpiece */}
       <main
         style={{
           display: "flex",
@@ -281,87 +274,23 @@ function App() {
           marginTop: "-80px",
         }}
       >
-        <div
-          style={{
-            background: theme === "light" ? "#fff" : "#222",
-            border: `3px solid ${ACCENT}`,
-            borderRadius: "2.1em",
-            boxShadow: "0px 2px 20px rgba(30,30,40,0.07)",
-            padding: "2.1em 2.8em",
-            margin: "1.5em 0",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            minWidth: "275px",
-            position: "relative",
-          }}
-        >
-          {/* Mode Label */}
-          <span
-            style={{
-              position: "absolute",
-              top: "-30px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              fontSize: "0.98em",
-              fontWeight: 500,
-              letterSpacing: "0.04em",
-              color: PRIMARY,
-              opacity: "0.9",
-            }}
-          >
-            {mode}
-          </span>
-          {/* Timer display */}
-          <div
-            style={{
-              fontSize: "4.8rem",
-              letterSpacing: "0.05em",
-              fontWeight: 700,
-              color: ACCENT,
-              marginBottom: "0.4em",
-              fontFamily: "monospace",
-              textShadow: theme === "dark" ? "0px 2px 18px #0002" : "none",
-              userSelect: "none",
-            }}
-          >
-            {formatTime(timeLeft)}
-          </div>
-          {/* Timer controls */}
-          <div style={{ display: "flex", gap: "1.2em" }}>
-            {isRunning ? (
-              <button
-                style={btnSecondary}
-                onClick={handlePause}
-                aria-label="Pause timer"
-              >
-                ⏸ Pause
-              </button>
-            ) : (
-              <button
-                style={btnEmph}
-                onClick={handleStart}
-                aria-label="Start timer"
-              >
-                ▶ Start
-              </button>
-            )}
-            <button style={btnPlain} onClick={handleReset} aria-label="Reset timer">
-              ⟳ Reset
-            </button>
-            <button style={btnPlain} onClick={handleSkip} aria-label="Skip session">
-              ⏭ Skip
-            </button>
-            <button
-              style={btnPlain}
-              onClick={openSettings}
-              aria-label="Open timer settings"
-            >
-              ⚙️
-            </button>
-          </div>
-        </div>
-        {/* Config summary quickbar */}
+        {/* Modular TimerDisplay */}
+        <TimerDisplay
+          mode={mode}
+          timeLeft={timeLeft}
+          theme={theme}
+          formatTime={formatTime}
+        />
+        {/* Session Controls */}
+        <SessionControls
+          isRunning={isRunning}
+          onStart={handleStart}
+          onPause={handlePause}
+          onReset={handleReset}
+          onSkip={handleSkip}
+          onSettings={openSettings}
+        />
+        {/* Config quickbar */}
         <div
           style={{
             display: "flex",
@@ -381,151 +310,202 @@ function App() {
         </div>
       </main>
 
-      {/* Settings Drawer */}
+      {/* Settings Drawer/Modal inlined - keep modal here for now */}
       {showSettings && (
-        <Modal onClose={closeSettings} title="Pomodoro Settings">
-          <form
+        <div
+          style={{
+            position: "fixed",
+            zIndex: 1000,
+            left: 0,
+            top: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(30,30,40,0.25)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          onClick={closeSettings}
+        >
+          <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "1.4em",
-              marginTop: "0.4em",
+              background: "var(--bg-primary)",
+              color: "var(--text-primary)",
+              borderRadius: "17px",
+              minWidth: "320px",
+              maxWidth: "90vw",
+              boxShadow: "0 6px 32px #1112",
+              padding: "2.2em 2.3em 1.4em",
+              position: "relative",
             }}
-            onSubmit={e => {
-              e.preventDefault();
-              closeSettings();
-            }}
+            onClick={e => e.stopPropagation()}
           >
-            <label>
-              <span style={labelStyle}>Work duration (minutes)</span>
-              <input
-                type="number"
-                min="1"
-                max="120"
-                name="work"
-                value={config.work}
-                onChange={handleConfigChange}
-                style={inputStyle}
-              />
-            </label>
-            <label>
-              <span style={labelStyle}>Short break (minutes)</span>
-              <input
-                type="number"
-                min="1"
-                max="60"
-                name="shortBreak"
-                value={config.shortBreak}
-                onChange={handleConfigChange}
-                style={inputStyle}
-              />
-            </label>
-            <label>
-              <span style={labelStyle}>Long break (minutes)</span>
-              <input
-                type="number"
-                min="1"
-                max="90"
-                name="longBreak"
-                value={config.longBreak}
-                onChange={handleConfigChange}
-                style={inputStyle}
-              />
-            </label>
-            <label>
-              <span style={labelStyle}>Sessions before long break</span>
-              <input
-                type="number"
-                min="1"
-                max="12"
-                name="cyclesPerLongBreak"
-                value={config.cyclesPerLongBreak}
-                onChange={handleConfigChange}
-                style={inputStyle}
-              />
-            </label>
             <button
-              type="submit"
+              onClick={closeSettings}
+              aria-label="Close settings modal"
               style={{
-                ...btnEmph,
-                marginTop: "0.6em",
-                fontSize: "1.15em",
-                width: "100%",
+                position: "absolute",
+                right: "23px",
+                top: "21px",
+                background: "transparent",
+                fontSize: "1.4em",
+                border: "none",
+                color: "#888",
+                cursor: "pointer",
+                fontWeight: 600,
               }}
             >
-              Save & Close
+              ✖
             </button>
-          </form>
-        </Modal>
-      )}
-
-      {/* History/Stats Drawer */}
-      {showHistory && (
-        <Modal onClose={closeHistory} title="Pomodoro History">
-          <div style={{ maxHeight: "350px", overflow: "auto", marginBottom: "1.1em" }}>
-            {history.length === 0 ? (
-              <p style={{ opacity: 0.6 }}>No pomodoro history yet!</p>
-            ) : (
-              <table
+            <h2 style={{ marginTop: 0, color: ACCENT, fontSize: "1.3em", letterSpacing: "0.03em" }}>
+              Pomodoro Settings
+            </h2>
+            <form
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1.4em",
+                marginTop: "0.4em",
+              }}
+              onSubmit={e => {
+                e.preventDefault();
+                closeSettings();
+              }}
+            >
+              <label>
+                <span style={{
+                  marginBottom: "0.1em",
+                  fontWeight: 400,
+                  fontSize: "1em",
+                  color: PRIMARY,
+                  display: "block"
+                }}>Work duration (minutes)</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  name="work"
+                  value={config.work}
+                  onChange={handleConfigChange}
+                  style={{
+                    marginTop: "6px",
+                    minWidth: "80px",
+                    fontSize: "1.07em",
+                    padding: "5px 13px",
+                    border: `2px solid ${ACCENT}`,
+                    borderRadius: "8px",
+                    outline: "none",
+                  }}
+                />
+              </label>
+              <label>
+                <span style={{
+                  marginBottom: "0.1em",
+                  fontWeight: 400,
+                  fontSize: "1em",
+                  color: PRIMARY,
+                  display: "block"
+                }}>Short break (minutes)</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="60"
+                  name="shortBreak"
+                  value={config.shortBreak}
+                  onChange={handleConfigChange}
+                  style={{
+                    marginTop: "6px",
+                    minWidth: "80px",
+                    fontSize: "1.07em",
+                    padding: "5px 13px",
+                    border: `2px solid ${ACCENT}`,
+                    borderRadius: "8px",
+                    outline: "none",
+                  }}
+                />
+              </label>
+              <label>
+                <span style={{
+                  marginBottom: "0.1em",
+                  fontWeight: 400,
+                  fontSize: "1em",
+                  color: PRIMARY,
+                  display: "block"
+                }}>Long break (minutes)</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="90"
+                  name="longBreak"
+                  value={config.longBreak}
+                  onChange={handleConfigChange}
+                  style={{
+                    marginTop: "6px",
+                    minWidth: "80px",
+                    fontSize: "1.07em",
+                    padding: "5px 13px",
+                    border: `2px solid ${ACCENT}`,
+                    borderRadius: "8px",
+                    outline: "none",
+                  }}
+                />
+              </label>
+              <label>
+                <span style={{
+                  marginBottom: "0.1em",
+                  fontWeight: 400,
+                  fontSize: "1em",
+                  color: PRIMARY,
+                  display: "block"
+                }}>Sessions before long break</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="12"
+                  name="cyclesPerLongBreak"
+                  value={config.cyclesPerLongBreak}
+                  onChange={handleConfigChange}
+                  style={{
+                    marginTop: "6px",
+                    minWidth: "80px",
+                    fontSize: "1.07em",
+                    padding: "5px 13px",
+                    border: `2px solid ${ACCENT}`,
+                    borderRadius: "8px",
+                    outline: "none",
+                  }}
+                />
+              </label>
+              <button
+                type="submit"
                 style={{
+                  background: ACCENT,
+                  color: "#fff",
+                  border: "none",
+                  padding: "0.7em 1.4em",
+                  borderRadius: "13px",
+                  fontWeight: 700,
+                  fontSize: "1.15em",
+                  cursor: "pointer",
+                  marginTop: "0.6em",
                   width: "100%",
-                  borderCollapse: "collapse",
-                  fontSize: "1.05em",
+                  transition: "all 0.13s"
                 }}
               >
-                <thead>
-                  <tr style={{ borderBottom: `2px solid ${PRIMARY}` }}>
-                    <th align="left">Date</th>
-                    <th>Duration</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map((h, i) => (
-                    <tr key={i} style={{ borderBottom: "1px solid #ddd" }}>
-                      <td>
-                        {new Date(h.timestamp).toLocaleString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </td>
-                      <td align="center">{h.duration} min</td>
-                      <td align="center">
-                        <span
-                          style={{
-                            color:
-                              h.status === "COMPLETED"
-                                ? ACCENT
-                                : h.status === "SKIPPED"
-                                ? "# adadad"
-                                : "#666",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {h.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                Save & Close
+              </button>
+            </form>
           </div>
-          <button
-            style={{
-              ...btnPlain,
-              color: "#e53935",
-              borderColor: "#e57373",
-              marginBottom: "0.4em",
-            }}
-            onClick={clearHistory}
-          >
-            Clear history
-          </button>
-        </Modal>
+        </div>
       )}
+
+      {/* Session History/Stats Modal, modular */}
+      <HistoryPanel
+        open={showHistory}
+        onClose={closeHistory}
+        history={history}
+        clearHistory={clearHistory}
+      />
 
       {/* Hidden audio for beep */}
       <audio ref={audioRef} src={BEEP_SRC} preload="auto" />
@@ -556,117 +536,6 @@ function App() {
     </div>
   );
 }
-
-// Minimalist Modal component
-function Modal({ onClose, title, children }) {
-  return (
-    <div
-      style={{
-        position: "fixed",
-        zIndex: 1000,
-        left: 0,
-        top: 0,
-        width: "100vw",
-        height: "100vh",
-        background: "rgba(30,30,40,0.25)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: "var(--bg-primary)",
-          color: "var(--text-primary)",
-          borderRadius: "17px",
-          minWidth: "320px",
-          maxWidth: "90vw",
-          boxShadow: "0 6px 32px #1112",
-          padding: "2.2em 2.3em 1.4em",
-          position: "relative",
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          aria-label="Close modal"
-          style={{
-            position: "absolute",
-            right: "23px",
-            top: "21px",
-            background: "transparent",
-            fontSize: "1.4em",
-            border: "none",
-            color: "#888",
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-        >
-          ✖
-        </button>
-        <h2 style={{ marginTop: 0, color: "#ff7043", fontSize: "1.3em", letterSpacing: "0.03em" }}>
-          {title}
-        </h2>
-        <div>{children}</div>
-      </div>
-    </div>
-  );
-}
-
-// Minimal button style objects (inline for minimalistic code)
-const btnEmph = {
-  background: ACCENT,
-  color: "#fff",
-  border: "none",
-  padding: "0.7em 1.4em",
-  borderRadius: "13px",
-  fontWeight: 700,
-  fontSize: "1.2em",
-  cursor: "pointer",
-  transition: "all 0.13s",
-  boxShadow: "0 3px 14px #2221",
-};
-const btnSecondary = {
-  background: PRIMARY,
-  color: "#fff",
-  border: "none",
-  padding: "0.7em 1.1em",
-  borderRadius: "13px",
-  fontWeight: 700,
-  fontSize: "1.08em",
-  cursor: "pointer",
-  transition: "all 0.13s",
-  boxShadow: "0 1px 6px #2221",
-};
-const btnPlain = {
-  background: "transparent",
-  color: ACCENT,
-  border: `2px solid ${ACCENT}`,
-  padding: "0.51em 1em",
-  borderRadius: "10px",
-  fontWeight: 600,
-  fontSize: "1em",
-  cursor: "pointer",
-  transition: "all 0.1s",
-};
-const labelStyle = {
-  marginBottom: "0.1em",
-  fontWeight: 400,
-  fontSize: "1em",
-  color: PRIMARY,
-  letterSpacing: "0",
-  display: "block",
-};
-const inputStyle = {
-  marginTop: "6px",
-  minWidth: "80px",
-  fontSize: "1.07em",
-  padding: "5px 13px",
-  border: `2px solid ${ACCENT}`,
-  borderRadius: "8px",
-  outline: "none",
-};
 
 // PUBLIC_INTERFACE
 export default App;
